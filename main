@@ -1,0 +1,92 @@
+// ==UserScript==
+// @name         youtube adblocker
+// @namespace    http://tampermonkey.net/
+// @version      1.0
+// @description  block youtube ads, should work as of 7/28/24
+// @match        https://www.youtube.com/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    function removeAds() {
+        const videoAd = document.querySelector('.ad-showing');
+        if (videoAd) {
+            const video = document.querySelector('video');
+            if (video) {
+                video.currentTime = video.duration;
+            }
+        }
+
+        const overlayAd = document.querySelector('.ytp-ad-overlay-container');
+        if (overlayAd) {
+            overlayAd.style.display = 'none';
+        }
+
+        const skipButton = document.querySelector('.ytp-ad-skip-button');
+        if (skipButton) {
+            skipButton.click();
+        }
+
+        const sideAds = document.querySelectorAll('ytd-compact-promoted-video-renderer');
+        sideAds.forEach(ad => ad.remove());
+
+        const mastheadAd = document.querySelector('ytd-masthead-ad-renderer');
+        if (mastheadAd) {
+            mastheadAd.remove();
+        }
+    }
+
+    function skipSponsoredSegments() {
+        const video = document.querySelector('video');
+        if (!video) return;
+
+        const sponsorKeywords = ['sponsor', 'sponsored', 'ad', 'advertisement', 'promotion'];
+
+        const description = document.querySelector('#description-inner');
+        if (description) {
+            const descText = description.innerText.toLowerCase();
+            for (const keyword of sponsorKeywords) {
+                if (descText.includes(keyword)) {
+                    break;
+                }
+            }
+        }
+
+        const chapters = document.querySelectorAll('.ytp-chapter-title-content');
+        chapters.forEach(chapter => {
+            const chapterText = chapter.innerText.toLowerCase();
+            for (const keyword of sponsorKeywords) {
+                if (chapterText.includes(keyword)) {
+                    const chapterTime = chapter.getAttribute('data-time');
+                    if (chapterTime) {
+                        video.currentTime = parseFloat(chapterTime) + 1;
+                    }
+                    break;
+                }
+            }
+        });
+    }
+
+    function handlePageChange() {
+        removeAds();
+        skipSponsoredSegments();
+    }
+
+    handlePageChange();
+
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'childList') {
+                handlePageChange();
+            }
+        });
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    setInterval(removeAds, 1000);
+
+    document.addEventListener('timeupdate', skipSponsoredSegments, true);
+})();
