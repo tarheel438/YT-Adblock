@@ -7,86 +7,96 @@
 // @grant        none
 // ==/UserScript==
 
-(function() {
-    'use strict';
+// this script blocks all the annoying youtube ads n skips sponsor stuff, so u can watch ur vids without any ads and sponsors.
+// all my vids will be sped up, future notice
+// don't mind the indent, i have some extension installed that fucks with my code. ill fix after the vid
 
-    function removeAds() {
-        const videoAd = document.querySelector('.ad-showing');
-        if (videoAd) {
-            const video = document.querySelector('video');
-            if (video) {
-                video.currentTime = video.duration;
+(function () {
+   'use strict';
+
+   function remove() {
+      // checks for ads n skips em if they show up, like video ads n overlay shit, also removes side ads n masthead ads
+      const ad = document.querySelector('.ad-showing');
+      if (ad) {
+         const vid = document.querySelector('video');
+         if (vid) {
+            vid.currentTime = vid.duration;
+         }
+      }
+
+      const overlay = document.querySelector('.ytp-ad-overlay-container');
+      if (overlay) {
+         overlay.style.display = 'none';
+      }
+
+      const skip = document.querySelector('.ytp-ad-skip-button');
+      if (skip) {
+         skip.click();
+      }
+
+      const side = document.querySelectorAll('ytd-compact-promoted-video-renderer');
+      side.forEach(ad => ad.remove());
+
+      const masthead = document.querySelector('ytd-masthead-ad-renderer');
+      if (masthead) {
+         masthead.remove();
+      }
+   }
+
+   function skip() {
+      // this function looks for any sponsor crap in the video desc n chapters, if it sees any, it skips to the next part, so u don’t gotta deal it
+      const vid = document.querySelector('video');
+      if (!vid) return;
+
+      const keywords = ['sponsor', 'sponsored', 'ad', 'advertisement', 'promotion'];
+
+      const desc = document.querySelector('#description-inner');
+      if (desc) {
+         const text = desc.innerText.toLowerCase();
+         for (const keyword of keywords) {
+            if (text.includes(keyword)) {
+               break;
             }
-        }
+         }
+      }
 
-        const overlayAd = document.querySelector('.ytp-ad-overlay-container');
-        if (overlayAd) {
-            overlayAd.style.display = 'none';
-        }
-
-        const skipButton = document.querySelector('.ytp-ad-skip-button');
-        if (skipButton) {
-            skipButton.click();
-        }
-
-        const sideAds = document.querySelectorAll('ytd-compact-promoted-video-renderer');
-        sideAds.forEach(ad => ad.remove());
-
-        const mastheadAd = document.querySelector('ytd-masthead-ad-renderer');
-        if (mastheadAd) {
-            mastheadAd.remove();
-        }
-    }
-
-    function skipSponsoredSegments() {
-        const video = document.querySelector('video');
-        if (!video) return;
-
-        const sponsorKeywords = ['sponsor', 'sponsored', 'ad', 'advertisement', 'promotion'];
-
-        const description = document.querySelector('#description-inner');
-        if (description) {
-            const descText = description.innerText.toLowerCase();
-            for (const keyword of sponsorKeywords) {
-                if (descText.includes(keyword)) {
-                    break;
-                }
+      const chapters = document.querySelectorAll('.ytp-chapter-title-content');
+      chapters.forEach(chapter => {
+         const text = chapter.innerText.toLowerCase();
+         for (const keyword of keywords) {
+            if (text.includes(keyword)) {
+               const time = chapter.getAttribute('data-time');
+               if (time) {
+                  vid.currentTime = parseFloat(time) + 1;
+               }
+               break;
             }
-        }
+         }
+      });
+   }
 
-        const chapters = document.querySelectorAll('.ytp-chapter-title-content');
-        chapters.forEach(chapter => {
-            const chapterText = chapter.innerText.toLowerCase();
-            for (const keyword of sponsorKeywords) {
-                if (chapterText.includes(keyword)) {
-                    const chapterTime = chapter.getAttribute('data-time');
-                    if (chapterTime) {
-                        video.currentTime = parseFloat(chapterTime) + 1;
-                    }
-                    break;
-                }
-            }
-        });
-    }
+   function handle() {
+      // this part runs the ad removin n skippin stuff whenever the page changes
+      remove();
+      skip();
+   }
 
-    function handlePageChange() {
-        removeAds();
-        skipSponsoredSegments();
-    }
+   handle();
 
-    handlePageChange();
+   const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+         if (mutation.type === 'childList') {
+            handle();
+         }
+      });
+   });
 
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            if (mutation.type === 'childList') {
-                handlePageChange();
-            }
-        });
-    });
+   observer.observe(document.body, {
+      childList: true,
+      subtree: true
+   });
 
-    observer.observe(document.body, { childList: true, subtree: true });
+   setInterval(remove, 1000);
 
-    setInterval(removeAds, 1000);
-
-    document.addEventListener('timeupdate', skipSponsoredSegments, true);
+   document.addEventListener('timeupdate', skip, true);
 })();
